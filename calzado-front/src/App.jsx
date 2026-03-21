@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import api from "./api";
 
-export default function App() {
+function App() {
   const [vista, setVista] = useState("dashboard");
 
   const [materiales, setMateriales] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [productos, setProductos] = useState([]);
+  const [empleados, setEmpleados] = useState([]);
+  const [ordenes, setOrdenes] = useState([]);
+  const [procesos, setProcesos] = useState([]);
+  const [costoCalculado, setCostoCalculado] = useState(null);
 
   const [nuevoMaterial, setNuevoMaterial] = useState({
     nombre: "",
@@ -31,20 +35,41 @@ export default function App() {
     precioSugerido: "",
   });
 
-  const [productoMaterial, setProductoMaterial] = useState({
+  const [asociacion, setAsociacion] = useState({
     productoId: "",
     materialId: "",
     cantidad: "",
   });
 
-  const [costoProductoId, setCostoProductoId] = useState("");
-  const [costoCalculado, setCostoCalculado] = useState(null);
+  const [consultaCostoId, setConsultaCostoId] = useState("");
+
+  const [nuevoEmpleado, setNuevoEmpleado] = useState({
+    nombre: "",
+    procesoPrincipal: "COMPRA",
+    activo: true,
+  });
+
+  const [nuevaOrden, setNuevaOrden] = useState({
+    productoId: "",
+    cantidad: "",
+    observaciones: "",
+  });
+
+  const [ordenConsultaId, setOrdenConsultaId] = useState("");
 
   useEffect(() => {
-    cargarMateriales();
-    cargarProveedores();
-    cargarProductos();
+    cargarTodo();
   }, []);
+
+  async function cargarTodo() {
+    await Promise.all([
+      cargarMateriales(),
+      cargarProveedores(),
+      cargarProductos(),
+      cargarEmpleados(),
+      cargarOrdenes(),
+    ]);
+  }
 
   async function cargarMateriales() {
     try {
@@ -73,6 +98,24 @@ export default function App() {
     }
   }
 
+  async function cargarEmpleados() {
+    try {
+      const res = await api.get("/empleados");
+      setEmpleados(res.data);
+    } catch (error) {
+      console.error("Error cargando empleados", error);
+    }
+  }
+
+  async function cargarOrdenes() {
+    try {
+      const res = await api.get("/produccion/ordenes");
+      setOrdenes(res.data);
+    } catch (error) {
+      console.error("Error cargando órdenes", error);
+    }
+  }
+
   async function crearMaterial(e) {
     e.preventDefault();
     try {
@@ -81,17 +124,19 @@ export default function App() {
         stock: Number(nuevoMaterial.stock),
         costoUnitario: Number(nuevoMaterial.costoUnitario),
       });
+
       setNuevoMaterial({
         nombre: "",
         unidad: "",
         stock: "",
         costoUnitario: "",
       });
-      cargarMateriales();
-      alert("Material creado");
+
+      await cargarMateriales();
+      alert("Material creado correctamente");
     } catch (error) {
       console.error(error);
-      alert("Error al crear material");
+      alert(error.response?.data?.message || "Error al crear material");
     }
   }
 
@@ -99,6 +144,7 @@ export default function App() {
     e.preventDefault();
     try {
       await api.post("/proveedores", nuevoProveedor);
+
       setNuevoProveedor({
         nombre: "",
         nit: "",
@@ -106,11 +152,12 @@ export default function App() {
         email: "",
         direccion: "",
       });
-      cargarProveedores();
-      alert("Proveedor creado");
+
+      await cargarProveedores();
+      alert("Proveedor creado correctamente");
     } catch (error) {
       console.error(error);
-      alert("Error al crear proveedor");
+      alert(error.response?.data?.message || "Error al crear proveedor");
     }
   }
 
@@ -121,6 +168,7 @@ export default function App() {
         ...nuevoProducto,
         precioSugerido: Number(nuevoProducto.precioSugerido),
       });
+
       setNuevoProducto({
         nombre: "",
         referencia: "",
@@ -128,83 +176,176 @@ export default function App() {
         color: "",
         precioSugerido: "",
       });
-      cargarProductos();
-      alert("Producto creado");
+
+      await cargarProductos();
+      alert("Producto creado correctamente");
     } catch (error) {
       console.error(error);
-      alert("Error al crear producto");
+      alert(error.response?.data?.message || "Error al crear producto");
     }
   }
 
   async function asociarMaterialProducto(e) {
     e.preventDefault();
     try {
-      await api.post(`/productos/${productoMaterial.productoId}/materiales`, [
+      await api.post(`/productos/${asociacion.productoId}/materiales`, [
         {
-          materialId: Number(productoMaterial.materialId),
-          cantidad: Number(productoMaterial.cantidad),
+          materialId: Number(asociacion.materialId),
+          cantidad: Number(asociacion.cantidad),
         },
       ]);
-      setProductoMaterial({
+
+      setAsociacion({
         productoId: "",
         materialId: "",
         cantidad: "",
       });
+
       alert("Material asociado al producto");
     } catch (error) {
       console.error(error);
-      alert("Error al asociar material");
+      alert(error.response?.data?.message || "Error al asociar material");
     }
   }
 
   async function consultarCostoProducto(e) {
     e.preventDefault();
     try {
-      const res = await api.get(`/productos/${costoProductoId}/costo`);
+      const res = await api.get(`/productos/${consultaCostoId}/costo`);
       setCostoCalculado(res.data);
     } catch (error) {
       console.error(error);
-      alert("Error al consultar costo");
+      alert(error.response?.data?.message || "Error al consultar costo");
+    }
+  }
+
+  async function crearEmpleado(e) {
+    e.preventDefault();
+    try {
+      await api.post("/empleados", nuevoEmpleado);
+
+      setNuevoEmpleado({
+        nombre: "",
+        procesoPrincipal: "COMPRA",
+        activo: true,
+      });
+
+      await cargarEmpleados();
+      alert("Empleado creado correctamente");
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || "Error al crear empleado");
+    }
+  }
+
+  async function crearOrden(e) {
+    e.preventDefault();
+    try {
+      await api.post("/produccion/ordenes", {
+        productoId: Number(nuevaOrden.productoId),
+        cantidad: Number(nuevaOrden.cantidad),
+        observaciones: nuevaOrden.observaciones,
+      });
+
+      setNuevaOrden({
+        productoId: "",
+        cantidad: "",
+        observaciones: "",
+      });
+
+      await cargarOrdenes();
+      alert("Orden creada correctamente");
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || "Error al crear orden");
+    }
+  }
+
+  async function consultarProcesosOrden(e) {
+    e.preventDefault();
+    try {
+      const res = await api.get(`/produccion/ordenes/${ordenConsultaId}/procesos`);
+      setProcesos(res.data);
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || "Error al consultar procesos");
+    }
+  }
+
+  async function actualizarProceso(id, estado) {
+    try {
+      await api.put(`/produccion/procesos/${id}`, {
+        estado,
+        observaciones: `Actualizado a ${estado} desde interfaz`,
+      });
+
+      if (ordenConsultaId) {
+        const res = await api.get(`/produccion/ordenes/${ordenConsultaId}/procesos`);
+        setProcesos(res.data);
+      }
+
+      await cargarOrdenes();
+      alert("Proceso actualizado correctamente");
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || "No se puede avanzar el proceso");
     }
   }
 
   return (
     <div className="app">
       <aside className="sidebar">
-        <h2>Calzado ERP</h2>
+        <h1>Calzado ERP</h1>
         <button onClick={() => setVista("dashboard")}>Dashboard</button>
         <button onClick={() => setVista("materiales")}>Materiales</button>
         <button onClick={() => setVista("proveedores")}>Proveedores</button>
         <button onClick={() => setVista("productos")}>Productos</button>
         <button onClick={() => setVista("costos")}>Costos</button>
+        <button onClick={() => setVista("empleados")}>Empleados</button>
+        <button onClick={() => setVista("produccion")}>Producción</button>
       </aside>
 
       <main className="main">
         {vista === "dashboard" && (
-          <section>
-            <h1>Dashboard</h1>
+          <section className="panel">
+            <h2>Panel general</h2>
+            <p className="subtitulo">Resumen del sistema</p>
+
             <div className="cards">
               <div className="card">
                 <h3>Materiales</h3>
                 <p>{materiales.length}</p>
               </div>
+
               <div className="card">
                 <h3>Proveedores</h3>
                 <p>{proveedores.length}</p>
               </div>
+
               <div className="card">
                 <h3>Productos</h3>
                 <p>{productos.length}</p>
+              </div>
+
+              <div className="card">
+                <h3>Empleados</h3>
+                <p>{empleados.length}</p>
+              </div>
+
+              <div className="card">
+                <h3>Órdenes</h3>
+                <p>{ordenes.length}</p>
               </div>
             </div>
           </section>
         )}
 
         {vista === "materiales" && (
-          <section>
-            <h1>Materiales</h1>
+          <section className="panel">
+            <h2>Materiales</h2>
+            <p className="subtitulo">Registro simple de materiales</p>
 
-            <form className="form" onSubmit={crearMaterial}>
+            <form className="form-grid" onSubmit={crearMaterial}>
               <input
                 placeholder="Nombre"
                 value={nuevoMaterial.nombre}
@@ -241,11 +382,13 @@ export default function App() {
               <button type="submit">Guardar material</button>
             </form>
 
-            <div className="list">
+            <div className="lista">
               {materiales.map((m) => (
-                <div key={m.id} className="item">
-                  <strong>{m.nombre}</strong> | {m.unidad} | stock: {m.stock} |
-                  costo: {m.costoUnitario}
+                <div className="item" key={m.id}>
+                  <strong>{m.nombre}</strong>
+                  <span>Unidad: {m.unidad}</span>
+                  <span>Stock: {m.stock}</span>
+                  <span>Costo: {m.costoUnitario}</span>
                 </div>
               ))}
             </div>
@@ -253,18 +396,16 @@ export default function App() {
         )}
 
         {vista === "proveedores" && (
-          <section>
-            <h1>Proveedores</h1>
+          <section className="panel">
+            <h2>Proveedores</h2>
+            <p className="subtitulo">Registro de proveedores</p>
 
-            <form className="form" onSubmit={crearProveedor}>
+            <form className="form-grid" onSubmit={crearProveedor}>
               <input
                 placeholder="Nombre"
                 value={nuevoProveedor.nombre}
                 onChange={(e) =>
-                  setNuevoProveedor({
-                    ...nuevoProveedor,
-                    nombre: e.target.value,
-                  })
+                  setNuevoProveedor({ ...nuevoProveedor, nombre: e.target.value })
                 }
               />
               <input
@@ -288,10 +429,7 @@ export default function App() {
                 placeholder="Email"
                 value={nuevoProveedor.email}
                 onChange={(e) =>
-                  setNuevoProveedor({
-                    ...nuevoProveedor,
-                    email: e.target.value,
-                  })
+                  setNuevoProveedor({ ...nuevoProveedor, email: e.target.value })
                 }
               />
               <input
@@ -307,10 +445,14 @@ export default function App() {
               <button type="submit">Guardar proveedor</button>
             </form>
 
-            <div className="list">
+            <div className="lista">
               {proveedores.map((p) => (
-                <div key={p.id} className="item">
-                  <strong>{p.nombre}</strong> | NIT: {p.nit} | {p.telefono}
+                <div className="item" key={p.id}>
+                  <strong>{p.nombre}</strong>
+                  <span>NIT: {p.nit}</span>
+                  <span>Teléfono: {p.telefono}</span>
+                  <span>Email: {p.email}</span>
+                  <span>Dirección: {p.direccion}</span>
                 </div>
               ))}
             </div>
@@ -318,10 +460,11 @@ export default function App() {
         )}
 
         {vista === "productos" && (
-          <section>
-            <h1>Productos</h1>
+          <section className="panel">
+            <h2>Productos</h2>
+            <p className="subtitulo">Registro de productos y asociación de materiales</p>
 
-            <form className="form" onSubmit={crearProducto}>
+            <form className="form-grid" onSubmit={crearProducto}>
               <input
                 placeholder="Nombre"
                 value={nuevoProducto.nombre}
@@ -367,50 +510,45 @@ export default function App() {
               <button type="submit">Guardar producto</button>
             </form>
 
-            <h2>Asociar material a producto</h2>
-            <form className="form" onSubmit={asociarMaterialProducto}>
+            <h3 className="seccion-titulo">Asociar material a producto</h3>
+
+            <form className="form-grid" onSubmit={asociarMaterialProducto}>
               <input
                 placeholder="Producto ID"
                 type="number"
-                value={productoMaterial.productoId}
+                value={asociacion.productoId}
                 onChange={(e) =>
-                  setProductoMaterial({
-                    ...productoMaterial,
-                    productoId: e.target.value,
-                  })
+                  setAsociacion({ ...asociacion, productoId: e.target.value })
                 }
               />
               <input
                 placeholder="Material ID"
                 type="number"
-                value={productoMaterial.materialId}
+                value={asociacion.materialId}
                 onChange={(e) =>
-                  setProductoMaterial({
-                    ...productoMaterial,
-                    materialId: e.target.value,
-                  })
+                  setAsociacion({ ...asociacion, materialId: e.target.value })
                 }
               />
               <input
                 placeholder="Cantidad"
                 type="number"
                 step="0.01"
-                value={productoMaterial.cantidad}
+                value={asociacion.cantidad}
                 onChange={(e) =>
-                  setProductoMaterial({
-                    ...productoMaterial,
-                    cantidad: e.target.value,
-                  })
+                  setAsociacion({ ...asociacion, cantidad: e.target.value })
                 }
               />
-              <button type="submit">Asociar</button>
+              <button type="submit">Guardar asociación</button>
             </form>
 
-            <div className="list">
+            <div className="lista">
               {productos.map((p) => (
-                <div key={p.id} className="item">
-                  <strong>{p.nombre}</strong> | ref: {p.referencia} | talla:{" "}
-                  {p.talla} | color: {p.color}
+                <div className="item" key={p.id}>
+                  <strong>{p.nombre}</strong>
+                  <span>Referencia: {p.referencia}</span>
+                  <span>Talla: {p.talla}</span>
+                  <span>Color: {p.color}</span>
+                  <span>Precio sugerido: {p.precioSugerido}</span>
                 </div>
               ))}
             </div>
@@ -418,41 +556,171 @@ export default function App() {
         )}
 
         {vista === "costos" && (
-          <section>
-            <h1>Costos de producto</h1>
+          <section className="panel">
+            <h2>Costos de producto</h2>
+            <p className="subtitulo">Consulta simple del costo por materiales</p>
 
-            <form className="form" onSubmit={consultarCostoProducto}>
+            <form className="form-grid" onSubmit={consultarCostoProducto}>
               <input
                 placeholder="Producto ID"
                 type="number"
-                value={costoProductoId}
-                onChange={(e) => setCostoProductoId(e.target.value)}
+                value={consultaCostoId}
+                onChange={(e) => setConsultaCostoId(e.target.value)}
               />
               <button type="submit">Consultar costo</button>
             </form>
 
             {costoCalculado && (
-              <div className="card big">
-                <h2>{costoCalculado.producto}</h2>
+              <div className="resultado-costo">
+                <h3>{costoCalculado.producto}</h3>
                 <p>Referencia: {costoCalculado.referencia}</p>
                 <p>
-                  <strong>
-                    Costo total materiales: {costoCalculado.costoTotalMateriales}
-                  </strong>
+                  <strong>Costo total materiales: {costoCalculado.costoTotalMateriales}</strong>
                 </p>
 
-                <h3>Detalle</h3>
-                {costoCalculado.detalles.map((d, i) => (
-                  <div key={i} className="item">
-                    {d.materialNombre} | cantidad: {d.cantidadProducto} | costo
-                    unitario: {d.costoUnitarioMaterial} | subtotal: {d.subtotal}
-                  </div>
-                ))}
+                <div className="lista">
+                  {costoCalculado.detalles.map((d, i) => (
+                    <div className="item" key={i}>
+                      <strong>{d.materialNombre}</strong>
+                      <span>Cantidad: {d.cantidadProducto}</span>
+                      <span>Costo unitario: {d.costoUnitarioMaterial}</span>
+                      <span>Subtotal: {d.subtotal}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
+          </section>
+        )}
+
+        {vista === "empleados" && (
+          <section className="panel">
+            <h2>Empleados</h2>
+            <p className="subtitulo">Registro de responsables por proceso</p>
+
+            <form className="form-grid" onSubmit={crearEmpleado}>
+              <input
+                placeholder="Nombre"
+                value={nuevoEmpleado.nombre}
+                onChange={(e) =>
+                  setNuevoEmpleado({ ...nuevoEmpleado, nombre: e.target.value })
+                }
+              />
+
+              <select
+                value={nuevoEmpleado.procesoPrincipal}
+                onChange={(e) =>
+                  setNuevoEmpleado({
+                    ...nuevoEmpleado,
+                    procesoPrincipal: e.target.value,
+                  })
+                }
+              >
+                <option value="COMPRA">COMPRA</option>
+                <option value="CORTE">CORTE</option>
+                <option value="GUARNECIDA">GUARNECIDA</option>
+                <option value="SOLADURA">SOLADURA</option>
+                <option value="COSIDA">COSIDA</option>
+                <option value="EMPLANTILLADA">EMPLANTILLADA</option>
+                <option value="EMPAQUE">EMPAQUE</option>
+              </select>
+
+              <button type="submit">Guardar empleado</button>
+            </form>
+
+            <div className="lista">
+              {empleados.map((e) => (
+                <div className="item" key={e.id}>
+                  <strong>{e.nombre}</strong>
+                  <span>Proceso: {e.procesoPrincipal}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {vista === "produccion" && (
+          <section className="panel">
+            <h2>Producción</h2>
+            <p className="subtitulo">Creación de orden y seguimiento de procesos</p>
+
+            <h3 className="seccion-titulo">Nueva orden</h3>
+            <form className="form-grid" onSubmit={crearOrden}>
+              <input
+                placeholder="Producto ID"
+                type="number"
+                value={nuevaOrden.productoId}
+                onChange={(e) =>
+                  setNuevaOrden({ ...nuevaOrden, productoId: e.target.value })
+                }
+              />
+              <input
+                placeholder="Cantidad"
+                type="number"
+                value={nuevaOrden.cantidad}
+                onChange={(e) =>
+                  setNuevaOrden({ ...nuevaOrden, cantidad: e.target.value })
+                }
+              />
+              <input
+                placeholder="Observaciones"
+                value={nuevaOrden.observaciones}
+                onChange={(e) =>
+                  setNuevaOrden({
+                    ...nuevaOrden,
+                    observaciones: e.target.value,
+                  })
+                }
+              />
+              <button type="submit">Crear orden</button>
+            </form>
+
+            <h3 className="seccion-titulo">Consultar procesos de una orden</h3>
+            <form className="form-grid" onSubmit={consultarProcesosOrden}>
+              <input
+                placeholder="ID orden"
+                type="number"
+                value={ordenConsultaId}
+                onChange={(e) => setOrdenConsultaId(e.target.value)}
+              />
+              <button type="submit">Ver procesos</button>
+            </form>
+
+            <div className="lista">
+              {procesos.map((p) => (
+                <div className="item" key={p.id}>
+                  <strong>{p.tipoProceso}</strong>
+                  <span>Estado: {p.estado}</span>
+                  <span>Empleado ID: {p.empleadoId ?? "No asignado"}</span>
+
+                  <div className="acciones-proceso">
+                    <button onClick={() => actualizarProceso(p.id, "EN_PROCESO")}>
+                      Iniciar
+                    </button>
+                    <button onClick={() => actualizarProceso(p.id, "TERMINADO")}>
+                      Terminar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="seccion-titulo">Órdenes registradas</h3>
+            <div className="lista">
+              {ordenes.map((o) => (
+                <div className="item" key={o.id}>
+                  <strong>Orden #{o.id}</strong>
+                  <span>Producto ID: {o.productoId}</span>
+                  <span>Cantidad: {o.cantidad}</span>
+                  <span>Estado: {o.estado}</span>
+                </div>
+              ))}
+            </div>
           </section>
         )}
       </main>
     </div>
   );
 }
+
+export default App;
