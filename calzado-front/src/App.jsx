@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "./api";
 
 function App() {
-  const [vista, setVista] = useState("dashboard");
+  const [vista, setVista] = useState("inicio");
 
   const [materiales, setMateriales] = useState([]);
   const [proveedores, setProveedores] = useState([]);
@@ -41,7 +41,7 @@ function App() {
     cantidad: "",
   });
 
-  const [consultaCostoId, setConsultaCostoId] = useState("");
+  const [consultaCostoProductoId, setConsultaCostoProductoId] = useState("");
 
   const [nuevoEmpleado, setNuevoEmpleado] = useState({
     nombre: "",
@@ -211,7 +211,7 @@ function App() {
   async function consultarCostoProducto(e) {
     e.preventDefault();
     try {
-      const res = await api.get(`/productos/${consultaCostoId}/costo`);
+      const res = await api.get(`/productos/${consultaCostoProductoId}/costo`);
       setCostoCalculado(res.data);
     } catch (error) {
       console.error(error);
@@ -292,50 +292,133 @@ function App() {
     }
   }
 
+  const mapaProductos = useMemo(() => {
+    const map = {};
+    productos.forEach((p) => {
+      map[p.id] = `${p.nombre}${p.referencia ? ` - ${p.referencia}` : ""}`;
+    });
+    return map;
+  }, [productos]);
+
+  const mapaEmpleados = useMemo(() => {
+    const map = {};
+    empleados.forEach((e) => {
+      map[e.id] = e.nombre;
+    });
+    return map;
+  }, [empleados]);
+
+  function TarjetaInicio({ titulo, subtitulo, onClick }) {
+    return (
+      <button className="shortcut-card" onClick={onClick}>
+        <span className="shortcut-title">{titulo}</span>
+        <span className="shortcut-subtitle">{subtitulo}</span>
+      </button>
+    );
+  }
+
   return (
-    <div className="app">
+    <div className="app-shell">
       <aside className="sidebar">
-        <h1>Calzado ERP</h1>
-        <button onClick={() => setVista("dashboard")}>Dashboard</button>
-        <button onClick={() => setVista("materiales")}>Materiales</button>
-        <button onClick={() => setVista("proveedores")}>Proveedores</button>
-        <button onClick={() => setVista("productos")}>Productos</button>
-        <button onClick={() => setVista("costos")}>Costos</button>
-        <button onClick={() => setVista("empleados")}>Empleados</button>
-        <button onClick={() => setVista("produccion")}>Producción</button>
+        <div className="brand">
+          <div className="brand-badge">NS</div>
+          <div>
+            <h1>CALZADO NORT SPORT</h1>
+            <p>Sistema de gestión</p>
+          </div>
+        </div>
+
+        <nav className="nav">
+          <button className={vista === "inicio" ? "active" : ""} onClick={() => setVista("inicio")}>
+            Inicio
+          </button>
+          <button className={vista === "materiales" ? "active" : ""} onClick={() => setVista("materiales")}>
+            Materiales
+          </button>
+          <button className={vista === "proveedores" ? "active" : ""} onClick={() => setVista("proveedores")}>
+            Proveedores
+          </button>
+          <button className={vista === "productos" ? "active" : ""} onClick={() => setVista("productos")}>
+            Productos
+          </button>
+          <button className={vista === "costos" ? "active" : ""} onClick={() => setVista("costos")}>
+            Costos
+          </button>
+          <button className={vista === "empleados" ? "active" : ""} onClick={() => setVista("empleados")}>
+            Empleados
+          </button>
+          <button className={vista === "produccion" ? "active" : ""} onClick={() => setVista("produccion")}>
+            Producción
+          </button>
+        </nav>
       </aside>
 
-      <main className="main">
-        {vista === "dashboard" && (
+      <main className="content">
+        {vista === "inicio" && (
           <section className="panel">
-            <h2>Panel general</h2>
-            <p className="subtitulo">Resumen del sistema</p>
-
-            <div className="cards">
-              <div className="card">
-                <h3>Materiales</h3>
-                <p>{materiales.length}</p>
+            <div className="hero">
+              <div>
+                <h2>Inicio</h2>
+                <p className="subtitulo">
+                  Seleccione una opción para trabajar en el sistema.
+                </p>
               </div>
+            </div>
 
-              <div className="card">
-                <h3>Proveedores</h3>
-                <p>{proveedores.length}</p>
+            <div className="summary-grid">
+              <div className="summary-card">
+                <span className="summary-label">Materiales</span>
+                <strong>{materiales.length}</strong>
               </div>
+              <div className="summary-card">
+                <span className="summary-label">Proveedores</span>
+                <strong>{proveedores.length}</strong>
+              </div>
+              <div className="summary-card">
+                <span className="summary-label">Productos</span>
+                <strong>{productos.length}</strong>
+              </div>
+              <div className="summary-card">
+                <span className="summary-label">Empleados</span>
+                <strong>{empleados.length}</strong>
+              </div>
+              <div className="summary-card">
+                <span className="summary-label">Órdenes</span>
+                <strong>{ordenes.length}</strong>
+              </div>
+            </div>
 
-              <div className="card">
-                <h3>Productos</h3>
-                <p>{productos.length}</p>
-              </div>
-
-              <div className="card">
-                <h3>Empleados</h3>
-                <p>{empleados.length}</p>
-              </div>
-
-              <div className="card">
-                <h3>Órdenes</h3>
-                <p>{ordenes.length}</p>
-              </div>
+            <div className="shortcut-grid">
+              <TarjetaInicio
+                titulo="Materiales"
+                subtitulo="Registrar y consultar insumos"
+                onClick={() => setVista("materiales")}
+              />
+              <TarjetaInicio
+                titulo="Proveedores"
+                subtitulo="Registrar datos de proveedores"
+                onClick={() => setVista("proveedores")}
+              />
+              <TarjetaInicio
+                titulo="Productos"
+                subtitulo="Crear productos y asociar materiales"
+                onClick={() => setVista("productos")}
+              />
+              <TarjetaInicio
+                titulo="Costos"
+                subtitulo="Consultar costo por producto"
+                onClick={() => setVista("costos")}
+              />
+              <TarjetaInicio
+                titulo="Empleados"
+                subtitulo="Registrar responsables por proceso"
+                onClick={() => setVista("empleados")}
+              />
+              <TarjetaInicio
+                titulo="Producción"
+                subtitulo="Crear órdenes y revisar etapas"
+                onClick={() => setVista("produccion")}
+              />
             </div>
           </section>
         )}
@@ -343,25 +426,25 @@ function App() {
         {vista === "materiales" && (
           <section className="panel">
             <h2>Materiales</h2>
-            <p className="subtitulo">Registro simple de materiales</p>
+            <p className="subtitulo">Registro y consulta de insumos</p>
 
-            <form className="form-grid" onSubmit={crearMaterial}>
+            <form className="modern-form" onSubmit={crearMaterial}>
               <input
-                placeholder="Nombre"
+                placeholder="Nombre del material"
                 value={nuevoMaterial.nombre}
                 onChange={(e) =>
                   setNuevoMaterial({ ...nuevoMaterial, nombre: e.target.value })
                 }
               />
               <input
-                placeholder="Unidad"
+                placeholder="Unidad de medida"
                 value={nuevoMaterial.unidad}
                 onChange={(e) =>
                   setNuevoMaterial({ ...nuevoMaterial, unidad: e.target.value })
                 }
               />
               <input
-                placeholder="Stock"
+                placeholder="Stock inicial"
                 type="number"
                 value={nuevoMaterial.stock}
                 onChange={(e) =>
@@ -382,13 +465,13 @@ function App() {
               <button type="submit">Guardar material</button>
             </form>
 
-            <div className="lista">
+            <div className="list-grid">
               {materiales.map((m) => (
-                <div className="item" key={m.id}>
+                <div className="info-card" key={m.id}>
                   <strong>{m.nombre}</strong>
                   <span>Unidad: {m.unidad}</span>
                   <span>Stock: {m.stock}</span>
-                  <span>Costo: {m.costoUnitario}</span>
+                  <span>Costo unitario: {m.costoUnitario}</span>
                 </div>
               ))}
             </div>
@@ -398,11 +481,11 @@ function App() {
         {vista === "proveedores" && (
           <section className="panel">
             <h2>Proveedores</h2>
-            <p className="subtitulo">Registro de proveedores</p>
+            <p className="subtitulo">Registro de datos de proveedores</p>
 
-            <form className="form-grid" onSubmit={crearProveedor}>
+            <form className="modern-form" onSubmit={crearProveedor}>
               <input
-                placeholder="Nombre"
+                placeholder="Nombre del proveedor"
                 value={nuevoProveedor.nombre}
                 onChange={(e) =>
                   setNuevoProveedor({ ...nuevoProveedor, nombre: e.target.value })
@@ -426,7 +509,7 @@ function App() {
                 }
               />
               <input
-                placeholder="Email"
+                placeholder="Correo electrónico"
                 value={nuevoProveedor.email}
                 onChange={(e) =>
                   setNuevoProveedor({ ...nuevoProveedor, email: e.target.value })
@@ -445,13 +528,13 @@ function App() {
               <button type="submit">Guardar proveedor</button>
             </form>
 
-            <div className="lista">
+            <div className="list-grid">
               {proveedores.map((p) => (
-                <div className="item" key={p.id}>
+                <div className="info-card" key={p.id}>
                   <strong>{p.nombre}</strong>
                   <span>NIT: {p.nit}</span>
                   <span>Teléfono: {p.telefono}</span>
-                  <span>Email: {p.email}</span>
+                  <span>Correo: {p.email}</span>
                   <span>Dirección: {p.direccion}</span>
                 </div>
               ))}
@@ -462,11 +545,11 @@ function App() {
         {vista === "productos" && (
           <section className="panel">
             <h2>Productos</h2>
-            <p className="subtitulo">Registro de productos y asociación de materiales</p>
+            <p className="subtitulo">Registro de productos y materiales asociados</p>
 
-            <form className="form-grid" onSubmit={crearProducto}>
+            <form className="modern-form" onSubmit={crearProducto}>
               <input
-                placeholder="Nombre"
+                placeholder="Nombre del producto"
                 value={nuevoProducto.nombre}
                 onChange={(e) =>
                   setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })
@@ -510,27 +593,39 @@ function App() {
               <button type="submit">Guardar producto</button>
             </form>
 
-            <h3 className="seccion-titulo">Asociar material a producto</h3>
+            <h3 className="section-title">Asociar material a producto</h3>
 
-            <form className="form-grid" onSubmit={asociarMaterialProducto}>
-              <input
-                placeholder="Producto ID"
-                type="number"
+            <form className="modern-form" onSubmit={asociarMaterialProducto}>
+              <select
                 value={asociacion.productoId}
                 onChange={(e) =>
                   setAsociacion({ ...asociacion, productoId: e.target.value })
                 }
-              />
-              <input
-                placeholder="Material ID"
-                type="number"
+              >
+                <option value="">Seleccione un producto</option>
+                {productos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre} {p.referencia ? `- ${p.referencia}` : ""}
+                  </option>
+                ))}
+              </select>
+
+              <select
                 value={asociacion.materialId}
                 onChange={(e) =>
                   setAsociacion({ ...asociacion, materialId: e.target.value })
                 }
-              />
+              >
+                <option value="">Seleccione un material</option>
+                {materiales.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nombre}
+                  </option>
+                ))}
+              </select>
+
               <input
-                placeholder="Cantidad"
+                placeholder="Cantidad requerida"
                 type="number"
                 step="0.01"
                 value={asociacion.cantidad}
@@ -541,9 +636,9 @@ function App() {
               <button type="submit">Guardar asociación</button>
             </form>
 
-            <div className="lista">
+            <div className="list-grid">
               {productos.map((p) => (
-                <div className="item" key={p.id}>
+                <div className="info-card" key={p.id}>
                   <strong>{p.nombre}</strong>
                   <span>Referencia: {p.referencia}</span>
                   <span>Talla: {p.talla}</span>
@@ -557,30 +652,36 @@ function App() {
 
         {vista === "costos" && (
           <section className="panel">
-            <h2>Costos de producto</h2>
-            <p className="subtitulo">Consulta simple del costo por materiales</p>
+            <h2>Costos</h2>
+            <p className="subtitulo">Consulta del costo del producto</p>
 
-            <form className="form-grid" onSubmit={consultarCostoProducto}>
-              <input
-                placeholder="Producto ID"
-                type="number"
-                value={consultaCostoId}
-                onChange={(e) => setConsultaCostoId(e.target.value)}
-              />
+            <form className="modern-form" onSubmit={consultarCostoProducto}>
+              <select
+                value={consultaCostoProductoId}
+                onChange={(e) => setConsultaCostoProductoId(e.target.value)}
+              >
+                <option value="">Seleccione un producto</option>
+                {productos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre} {p.referencia ? `- ${p.referencia}` : ""}
+                  </option>
+                ))}
+              </select>
+
               <button type="submit">Consultar costo</button>
             </form>
 
             {costoCalculado && (
-              <div className="resultado-costo">
+              <div className="cost-box">
                 <h3>{costoCalculado.producto}</h3>
                 <p>Referencia: {costoCalculado.referencia}</p>
-                <p>
-                  <strong>Costo total materiales: {costoCalculado.costoTotalMateriales}</strong>
+                <p className="highlight">
+                  Costo total materiales: {costoCalculado.costoTotalMateriales}
                 </p>
 
-                <div className="lista">
+                <div className="list-grid">
                   {costoCalculado.detalles.map((d, i) => (
-                    <div className="item" key={i}>
+                    <div className="info-card" key={i}>
                       <strong>{d.materialNombre}</strong>
                       <span>Cantidad: {d.cantidadProducto}</span>
                       <span>Costo unitario: {d.costoUnitarioMaterial}</span>
@@ -598,9 +699,9 @@ function App() {
             <h2>Empleados</h2>
             <p className="subtitulo">Registro de responsables por proceso</p>
 
-            <form className="form-grid" onSubmit={crearEmpleado}>
+            <form className="modern-form" onSubmit={crearEmpleado}>
               <input
-                placeholder="Nombre"
+                placeholder="Nombre del empleado"
                 value={nuevoEmpleado.nombre}
                 onChange={(e) =>
                   setNuevoEmpleado({ ...nuevoEmpleado, nombre: e.target.value })
@@ -616,21 +717,21 @@ function App() {
                   })
                 }
               >
-                <option value="COMPRA">COMPRA</option>
-                <option value="CORTE">CORTE</option>
-                <option value="GUARNECIDA">GUARNECIDA</option>
-                <option value="SOLADURA">SOLADURA</option>
-                <option value="COSIDA">COSIDA</option>
-                <option value="EMPLANTILLADA">EMPLANTILLADA</option>
-                <option value="EMPAQUE">EMPAQUE</option>
+                <option value="COMPRA">Compra</option>
+                <option value="CORTE">Corte</option>
+                <option value="GUARNECIDA">Guarnecida</option>
+                <option value="SOLADURA">Soladura</option>
+                <option value="COSIDA">Cosida</option>
+                <option value="EMPLANTILLADA">Emplantillada</option>
+                <option value="EMPAQUE">Empaque</option>
               </select>
 
               <button type="submit">Guardar empleado</button>
             </form>
 
-            <div className="lista">
+            <div className="list-grid">
               {empleados.map((e) => (
-                <div className="item" key={e.id}>
+                <div className="info-card" key={e.id}>
                   <strong>{e.nombre}</strong>
                   <span>Proceso: {e.procesoPrincipal}</span>
                 </div>
@@ -642,18 +743,25 @@ function App() {
         {vista === "produccion" && (
           <section className="panel">
             <h2>Producción</h2>
-            <p className="subtitulo">Creación de orden y seguimiento de procesos</p>
+            <p className="subtitulo">Creación de órdenes y seguimiento del proceso</p>
 
-            <h3 className="seccion-titulo">Nueva orden</h3>
-            <form className="form-grid" onSubmit={crearOrden}>
-              <input
-                placeholder="Producto ID"
-                type="number"
+            <h3 className="section-title">Nueva orden</h3>
+
+            <form className="modern-form" onSubmit={crearOrden}>
+              <select
                 value={nuevaOrden.productoId}
                 onChange={(e) =>
                   setNuevaOrden({ ...nuevaOrden, productoId: e.target.value })
                 }
-              />
+              >
+                <option value="">Seleccione un producto</option>
+                {productos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre} {p.referencia ? `- ${p.referencia}` : ""}
+                  </option>
+                ))}
+              </select>
+
               <input
                 placeholder="Cantidad"
                 type="number"
@@ -662,6 +770,7 @@ function App() {
                   setNuevaOrden({ ...nuevaOrden, cantidad: e.target.value })
                 }
               />
+
               <input
                 placeholder="Observaciones"
                 value={nuevaOrden.observaciones}
@@ -672,28 +781,38 @@ function App() {
                   })
                 }
               />
+
               <button type="submit">Crear orden</button>
             </form>
 
-            <h3 className="seccion-titulo">Consultar procesos de una orden</h3>
-            <form className="form-grid" onSubmit={consultarProcesosOrden}>
-              <input
-                placeholder="ID orden"
-                type="number"
+            <h3 className="section-title">Consultar procesos de una orden</h3>
+
+            <form className="modern-form" onSubmit={consultarProcesosOrden}>
+              <select
                 value={ordenConsultaId}
                 onChange={(e) => setOrdenConsultaId(e.target.value)}
-              />
+              >
+                <option value="">Seleccione una orden</option>
+                {ordenes.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    Orden #{o.id} - {mapaProductos[o.productoId] || `Producto ${o.productoId}`}
+                  </option>
+                ))}
+              </select>
+
               <button type="submit">Ver procesos</button>
             </form>
 
-            <div className="lista">
+            <div className="list-grid">
               {procesos.map((p) => (
-                <div className="item" key={p.id}>
+                <div className="info-card" key={p.id}>
                   <strong>{p.tipoProceso}</strong>
                   <span>Estado: {p.estado}</span>
-                  <span>Empleado ID: {p.empleadoId ?? "No asignado"}</span>
+                  <span>
+                    Responsable: {mapaEmpleados[p.empleadoId] || "Sin asignar"}
+                  </span>
 
-                  <div className="acciones-proceso">
+                  <div className="action-row">
                     <button onClick={() => actualizarProceso(p.id, "EN_PROCESO")}>
                       Iniciar
                     </button>
@@ -705,12 +824,13 @@ function App() {
               ))}
             </div>
 
-            <h3 className="seccion-titulo">Órdenes registradas</h3>
-            <div className="lista">
+            <h3 className="section-title">Órdenes registradas</h3>
+
+            <div className="list-grid">
               {ordenes.map((o) => (
-                <div className="item" key={o.id}>
+                <div className="info-card" key={o.id}>
                   <strong>Orden #{o.id}</strong>
-                  <span>Producto ID: {o.productoId}</span>
+                  <span>Producto: {mapaProductos[o.productoId] || o.productoId}</span>
                   <span>Cantidad: {o.cantidad}</span>
                   <span>Estado: {o.estado}</span>
                 </div>
