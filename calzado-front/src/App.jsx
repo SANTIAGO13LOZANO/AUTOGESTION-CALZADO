@@ -12,6 +12,12 @@ function App() {
   const [procesos, setProcesos] = useState([]);
   const [costoCalculado, setCostoCalculado] = useState(null);
 
+  // Nómina
+  const [tarifas, setTarifas] = useState([]);
+  const [trabajos, setTrabajos] = useState([]);
+  const [resumenEmpleado, setResumenEmpleado] = useState(null);
+  const [costoManoObraOrden, setCostoManoObraOrden] = useState(null);
+
   const [nuevoMaterial, setNuevoMaterial] = useState({
     nombre: "",
     unidad: "",
@@ -57,17 +63,35 @@ function App() {
 
   const [ordenConsultaId, setOrdenConsultaId] = useState("");
 
+  // Nómina forms
+  const [nuevaTarifa, setNuevaTarifa] = useState({
+    tipoProceso: "COMPRA",
+    valorUnidad: "",
+  });
+
+  const [nuevoTrabajo, setNuevoTrabajo] = useState({
+    empleadoId: "",
+    ordenProduccionId: "",
+    unidadesTrabajadas: "",
+    observaciones: "",
+  });
+
+  const [resumenEmpleadoId, setResumenEmpleadoId] = useState("");
+  const [manoObraOrdenId, setManoObraOrdenId] = useState("");
+
   useEffect(() => {
     cargarTodo();
   }, []);
 
   async function cargarTodo() {
-    await Promise.all([
+    await Promise.allSettled([
       cargarMateriales(),
       cargarProveedores(),
       cargarProductos(),
       cargarEmpleados(),
       cargarOrdenes(),
+      cargarTarifas(),
+      cargarTrabajos(),
     ]);
   }
 
@@ -113,6 +137,26 @@ function App() {
       setOrdenes(res.data);
     } catch (error) {
       console.error("Error cargando órdenes", error);
+    }
+  }
+
+  async function cargarTarifas() {
+    try {
+      const res = await api.get("/nomina/tarifas");
+      setTarifas(res.data);
+    } catch (error) {
+      console.error("Error cargando tarifas", error);
+      setTarifas([]);
+    }
+  }
+
+  async function cargarTrabajos() {
+    try {
+      const res = await api.get("/nomina/trabajos");
+      setTrabajos(res.data);
+    } catch (error) {
+      console.error("Error cargando trabajos", error);
+      setTrabajos([]);
     }
   }
 
@@ -292,6 +336,89 @@ function App() {
     }
   }
 
+  // =========================
+  // NÓMINA
+  // =========================
+
+  async function guardarTarifa(e) {
+    e.preventDefault();
+    try {
+      await api.post("/nomina/tarifas", {
+        tipoProceso: nuevaTarifa.tipoProceso,
+        valorUnidad: Number(nuevaTarifa.valorUnidad),
+      });
+
+      setNuevaTarifa({
+        tipoProceso: "COMPRA",
+        valorUnidad: "",
+      });
+
+      await cargarTarifas();
+      alert("Tarifa guardada correctamente");
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || "Error al guardar tarifa");
+    }
+  }
+
+  const empleadoSeleccionadoNomina = useMemo(() => {
+    return empleados.find((e) => String(e.id) === String(nuevoTrabajo.empleadoId)) || null;
+  }, [empleados, nuevoTrabajo.empleadoId]);
+
+  async function registrarTrabajoNomina(e) {
+    e.preventDefault();
+
+    if (!empleadoSeleccionadoNomina) {
+      alert("Seleccione un empleado");
+      return;
+    }
+
+    try {
+      await api.post("/nomina/trabajos", {
+        empleadoId: Number(nuevoTrabajo.empleadoId),
+        ordenProduccionId: Number(nuevoTrabajo.ordenProduccionId),
+        tipoProceso: empleadoSeleccionadoNomina.procesoPrincipal,
+        unidadesTrabajadas: Number(nuevoTrabajo.unidadesTrabajadas),
+        observaciones: nuevoTrabajo.observaciones,
+      });
+
+      setNuevoTrabajo({
+        empleadoId: "",
+        ordenProduccionId: "",
+        unidadesTrabajadas: "",
+        observaciones: "",
+      });
+
+      await cargarTrabajos();
+      alert("Trabajo registrado correctamente");
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || "Error al registrar trabajo");
+    }
+  }
+
+  async function consultarResumenEmpleado(e) {
+    e.preventDefault();
+    try {
+      const res = await api.get(`/nomina/empleados/${resumenEmpleadoId}/resumen`);
+      setResumenEmpleado(res.data);
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || "Error al consultar resumen");
+    }
+  }
+
+  async function consultarCostoManoObra(e) {
+    e.preventDefault();
+    try {
+      const res = await api.get(`/nomina/ordenes/${manoObraOrdenId}/mano-obra`);
+      setCostoManoObraOrden(res.data);
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || "Error al consultar mano de obra");
+    }
+  }
+
   const mapaProductos = useMemo(() => {
     const map = {};
     productos.forEach((p) => {
@@ -308,10 +435,13 @@ function App() {
     return map;
   }, [empleados]);
 
-  function TarjetaInicio({ titulo, subtitulo, onClick }) {
+  function TarjetaInicio({ titulo, subtitulo, dato, onClick }) {
     return (
       <button className="shortcut-card" onClick={onClick}>
-        <span className="shortcut-title">{titulo}</span>
+        <div className="shortcut-top">
+          <span className="shortcut-title">{titulo}</span>
+          <span className="shortcut-badge">{dato}</span>
+        </div>
         <span className="shortcut-subtitle">{subtitulo}</span>
       </button>
     );
@@ -350,6 +480,9 @@ function App() {
           <button className={vista === "produccion" ? "active" : ""} onClick={() => setVista("produccion")}>
             Producción
           </button>
+          <button className={vista === "nomina" ? "active" : ""} onClick={() => setVista("nomina")}>
+            Nómina
+          </button>
         </nav>
       </aside>
 
@@ -365,59 +498,48 @@ function App() {
               </div>
             </div>
 
-            <div className="summary-grid">
-              <div className="summary-card">
-                <span className="summary-label">Materiales</span>
-                <strong>{materiales.length}</strong>
-              </div>
-              <div className="summary-card">
-                <span className="summary-label">Proveedores</span>
-                <strong>{proveedores.length}</strong>
-              </div>
-              <div className="summary-card">
-                <span className="summary-label">Productos</span>
-                <strong>{productos.length}</strong>
-              </div>
-              <div className="summary-card">
-                <span className="summary-label">Empleados</span>
-                <strong>{empleados.length}</strong>
-              </div>
-              <div className="summary-card">
-                <span className="summary-label">Órdenes</span>
-                <strong>{ordenes.length}</strong>
-              </div>
-            </div>
-
             <div className="shortcut-grid">
               <TarjetaInicio
                 titulo="Materiales"
                 subtitulo="Registrar y consultar insumos"
+                dato={materiales.length}
                 onClick={() => setVista("materiales")}
               />
               <TarjetaInicio
                 titulo="Proveedores"
                 subtitulo="Registrar datos de proveedores"
+                dato={proveedores.length}
                 onClick={() => setVista("proveedores")}
               />
               <TarjetaInicio
                 titulo="Productos"
                 subtitulo="Crear productos y asociar materiales"
+                dato={productos.length}
                 onClick={() => setVista("productos")}
               />
               <TarjetaInicio
                 titulo="Costos"
                 subtitulo="Consultar costo por producto"
+                dato="$$"
                 onClick={() => setVista("costos")}
               />
               <TarjetaInicio
                 titulo="Empleados"
                 subtitulo="Registrar responsables por proceso"
+                dato={empleados.length}
                 onClick={() => setVista("empleados")}
               />
               <TarjetaInicio
                 titulo="Producción"
                 subtitulo="Crear órdenes y revisar etapas"
+                dato={ordenes.length}
                 onClick={() => setVista("produccion")}
+              />
+              <TarjetaInicio
+                titulo="Nómina"
+                subtitulo="Tarifas, trabajos y pagos"
+                dato={trabajos.length}
+                onClick={() => setVista("nomina")}
               />
             </div>
           </section>
@@ -813,10 +935,10 @@ function App() {
                   </span>
 
                   <div className="action-row">
-                    <button onClick={() => actualizarProceso(p.id, "EN_PROCESO")}>
+                    <button type="button" onClick={() => actualizarProceso(p.id, "EN_PROCESO")}>
                       Iniciar
                     </button>
-                    <button onClick={() => actualizarProceso(p.id, "TERMINADO")}>
+                    <button type="button" onClick={() => actualizarProceso(p.id, "TERMINADO")}>
                       Terminar
                     </button>
                   </div>
@@ -833,6 +955,207 @@ function App() {
                   <span>Producto: {mapaProductos[o.productoId] || o.productoId}</span>
                   <span>Cantidad: {o.cantidad}</span>
                   <span>Estado: {o.estado}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {vista === "nomina" && (
+          <section className="panel">
+            <h2>Nómina</h2>
+            <p className="subtitulo">Pago de operarios por producción</p>
+
+            <h3 className="section-title">Tarifas por proceso</h3>
+            <form className="modern-form" onSubmit={guardarTarifa}>
+              <select
+                value={nuevaTarifa.tipoProceso}
+                onChange={(e) =>
+                  setNuevaTarifa({ ...nuevaTarifa, tipoProceso: e.target.value })
+                }
+              >
+                <option value="COMPRA">Compra</option>
+                <option value="CORTE">Corte</option>
+                <option value="GUARNECIDA">Guarnecida</option>
+                <option value="SOLADURA">Soladura</option>
+                <option value="COSIDA">Cosida</option>
+                <option value="EMPLANTILLADA">Emplantillada</option>
+                <option value="EMPAQUE">Empaque</option>
+              </select>
+
+              <input
+                placeholder="Valor por unidad"
+                type="number"
+                value={nuevaTarifa.valorUnidad}
+                onChange={(e) =>
+                  setNuevaTarifa({ ...nuevaTarifa, valorUnidad: e.target.value })
+                }
+              />
+
+              <button type="submit">Guardar tarifa</button>
+            </form>
+
+            <div className="list-grid">
+              {tarifas.map((t) => (
+                <div className="info-card" key={t.id}>
+                  <strong>{t.tipoProceso}</strong>
+                  <span>Valor por unidad: {t.valorUnidad}</span>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="section-title">Registrar trabajo realizado</h3>
+            <form className="modern-form" onSubmit={registrarTrabajoNomina}>
+              <select
+                value={nuevoTrabajo.empleadoId}
+                onChange={(e) =>
+                  setNuevoTrabajo({ ...nuevoTrabajo, empleadoId: e.target.value })
+                }
+              >
+                <option value="">Seleccione un empleado</option>
+                {empleados.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.nombre} - {e.procesoPrincipal}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={nuevoTrabajo.ordenProduccionId}
+                onChange={(e) =>
+                  setNuevoTrabajo({
+                    ...nuevoTrabajo,
+                    ordenProduccionId: e.target.value,
+                  })
+                }
+              >
+                <option value="">Seleccione una orden</option>
+                {ordenes.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    Orden #{o.id} - {mapaProductos[o.productoId] || `Producto ${o.productoId}`}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                placeholder="Unidades trabajadas"
+                type="number"
+                value={nuevoTrabajo.unidadesTrabajadas}
+                onChange={(e) =>
+                  setNuevoTrabajo({
+                    ...nuevoTrabajo,
+                    unidadesTrabajadas: e.target.value,
+                  })
+                }
+              />
+
+              <input
+                placeholder="Observaciones"
+                value={nuevoTrabajo.observaciones}
+                onChange={(e) =>
+                  setNuevoTrabajo({
+                    ...nuevoTrabajo,
+                    observaciones: e.target.value,
+                  })
+                }
+              />
+
+              <button type="submit">Registrar trabajo</button>
+            </form>
+
+            {empleadoSeleccionadoNomina && (
+              <div className="cost-box small-box">
+                <p>
+                  <strong>Proceso detectado:</strong>{" "}
+                  {empleadoSeleccionadoNomina.procesoPrincipal}
+                </p>
+              </div>
+            )}
+
+            <h3 className="section-title">Resumen por empleado</h3>
+            <form className="modern-form" onSubmit={consultarResumenEmpleado}>
+              <select
+                value={resumenEmpleadoId}
+                onChange={(e) => setResumenEmpleadoId(e.target.value)}
+              >
+                <option value="">Seleccione un empleado</option>
+                {empleados.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.nombre}
+                  </option>
+                ))}
+              </select>
+
+              <button type="submit">Ver resumen</button>
+            </form>
+
+            {resumenEmpleado && (
+              <div className="cost-box">
+                <h3>{resumenEmpleado.empleadoNombre}</h3>
+                <p>Total unidades: {resumenEmpleado.totalUnidades}</p>
+                <p className="highlight">Total pago: {resumenEmpleado.totalPago}</p>
+
+                <div className="list-grid">
+                  {resumenEmpleado.detalles.map((d) => (
+                    <div className="info-card" key={d.id}>
+                      <strong>{d.tipoProceso}</strong>
+                      <span>Orden: #{d.ordenProduccionId}</span>
+                      <span>Unidades: {d.unidadesTrabajadas}</span>
+                      <span>Valor unidad: {d.valorUnidadAplicado}</span>
+                      <span>Pago: {d.pagoCalculado}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <h3 className="section-title">Costo de mano de obra por orden</h3>
+            <form className="modern-form" onSubmit={consultarCostoManoObra}>
+              <select
+                value={manoObraOrdenId}
+                onChange={(e) => setManoObraOrdenId(e.target.value)}
+              >
+                <option value="">Seleccione una orden</option>
+                {ordenes.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    Orden #{o.id} - {mapaProductos[o.productoId] || `Producto ${o.productoId}`}
+                  </option>
+                ))}
+              </select>
+
+              <button type="submit">Ver mano de obra</button>
+            </form>
+
+            {costoManoObraOrden && (
+              <div className="cost-box">
+                <h3>Orden #{costoManoObraOrden.ordenProduccionId}</h3>
+                <p>Total unidades: {costoManoObraOrden.totalUnidades}</p>
+                <p className="highlight">
+                  Total mano de obra: {costoManoObraOrden.totalPago}
+                </p>
+
+                <div className="list-grid">
+                  {costoManoObraOrden.detalles.map((d) => (
+                    <div className="info-card" key={d.id}>
+                      <strong>{d.empleadoNombre}</strong>
+                      <span>Proceso: {d.tipoProceso}</span>
+                      <span>Unidades: {d.unidadesTrabajadas}</span>
+                      <span>Pago: {d.pagoCalculado}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <h3 className="section-title">Registros recientes</h3>
+            <div className="list-grid">
+              {trabajos.map((t) => (
+                <div className="info-card" key={t.id}>
+                  <strong>{t.empleadoNombre}</strong>
+                  <span>Proceso: {t.tipoProceso}</span>
+                  <span>Orden: #{t.ordenProduccionId}</span>
+                  <span>Unidades: {t.unidadesTrabajadas}</span>
+                  <span>Pago: {t.pagoCalculado}</span>
                 </div>
               ))}
             </div>
