@@ -632,28 +632,153 @@ function App() {
 
       <main className="content">
         {vista === "inicio" && (
-          <section className="panel">
-            <div className="hero">
-              <div>
-                <h2>Inicio</h2>
-                <p className="subtitulo">Seleccione una opción para trabajar en el sistema.</p>
-              </div>
-            </div>
+  <section className="panel">
+    <div className="hero dashboard-hero">
+      <div>
+        <h2>BIENVENIDO</h2>
+        <p className="subtitulo">
+          CALZADO NORT SPORT
+        </p>
+      </div>
 
-            <div className="shortcut-grid">
-              <TarjetaInicio titulo="Materiales" subtitulo="Registrar y consultar insumos" dato={materiales.length} onClick={() => setVista("materiales")} />
-              <TarjetaInicio titulo="Proveedores" subtitulo="Registrar datos de proveedores" dato={proveedores.length} onClick={() => setVista("proveedores")} />
-              <TarjetaInicio titulo="Productos" subtitulo="Crear productos y asociar materiales" dato={productos.length} onClick={() => setVista("productos")} />
-              <TarjetaInicio titulo="Costos" subtitulo="Consultar costo por producto" dato="$$" onClick={() => setVista("costos")} />
-              <TarjetaInicio titulo="Empleados" subtitulo="Registrar responsables por proceso" dato={empleados.length} onClick={() => setVista("empleados")} />
-              <TarjetaInicio titulo="Producción" subtitulo="Crear órdenes y revisar etapas" dato={ordenes.length} onClick={() => setVista("produccion")} />
-              <TarjetaInicio titulo="Nómina" subtitulo="Tarifas, trabajos y pagos" dato={trabajos.length} onClick={() => setVista("nomina")} />
-              <TarjetaInicio titulo="Clientes" subtitulo="Registrar clientes comerciales" dato={clientes.length} onClick={() => setVista("clientes")} />
-              <TarjetaInicio titulo="Pedidos" subtitulo="Crear pedidos y sus detalles" dato={pedidos.length} onClick={() => setVista("pedidos")} />
-              <TarjetaInicio titulo="Despachos" subtitulo="Despachar pedidos listos" dato={despachoConsultado ? 1 : 0} onClick={() => setVista("despachos")} />
+   
+    </div>
+
+    <div className="kpi-grid">
+      <div className="kpi-card">
+        <span>Materiales</span>
+        <strong>{materiales.length}</strong>
+        <small>Insumos registrados</small>
+      </div>
+
+      <div className="kpi-card">
+        <span>Proveedores</span>
+        <strong>{proveedores.length}</strong>
+        <small>Aliados activos</small>
+      </div>
+
+      <div className="kpi-card">
+        <span>Productos</span>
+        <strong>{productos.length}</strong>
+        <small>Referencias disponibles</small>
+      </div>
+
+      <div className="kpi-card">
+        <span>Empleados</span>
+        <strong>{empleados.length}</strong>
+        <small>Responsables por proceso</small>
+      </div>
+
+      <div className="kpi-card">
+        <span>Órdenes</span>
+        <strong>{ordenes.length}</strong>
+        <small>Órdenes de producción</small>
+      </div>
+
+      <div className="kpi-card">
+        <span>Pedidos</span>
+        <strong>{pedidos.length}</strong>
+        <small>Pedidos registrados</small>
+      </div>
+    </div>
+
+    <div className="dashboard-grid">
+      <div className="dashboard-box">
+        <h3>Estado de pedidos</h3>
+
+        {["PENDIENTE", "EN_PRODUCCION", "LISTO", "DESPACHADO"].map((estado) => {
+          const total = pedidos.filter((p) => p.estado === estado).length;
+          const porcentaje = pedidos.length > 0 ? Math.round((total / pedidos.length) * 100) : 0;
+
+          return (
+            <div className="bar-item" key={estado}>
+              <div className="bar-info">
+                <span>{estado}</span>
+                <strong>{total}</strong>
+              </div>
+
+              <div className="bar">
+                <div className="bar-fill" style={{ width: `${porcentaje}%` }} />
+              </div>
+
+              <small>{porcentaje}%</small>
             </div>
-          </section>
-        )}
+          );
+        })}
+      </div>
+
+      <div className="dashboard-box">
+        <h3>Estado de producción</h3>
+
+        {["CREADA", "EN_PROCESO", "TERMINADA", "CANCELADA"].map((estado) => {
+          const total = ordenes.filter((o) => o.estado === estado).length;
+          const porcentaje = ordenes.length > 0 ? Math.round((total / ordenes.length) * 100) : 0;
+
+          return (
+            <div className="bar-item" key={estado}>
+              <div className="bar-info">
+                <span>{estado}</span>
+                <strong>{total}</strong>
+              </div>
+
+              <div className="bar">
+                <div className="bar-fill" style={{ width: `${porcentaje}%` }} />
+              </div>
+
+              <small>{porcentaje}%</small>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+
+    <h3 className="section-title">Accesos rápidos</h3>
+
+    <div className="shortcut-grid">
+      <TarjetaInicio
+        titulo="Inventario"
+        subtitulo="Materiales e insumos"
+        
+        onClick={() => setVista("materiales")}
+      />
+
+      <TarjetaInicio
+        titulo="Productos"
+        subtitulo="Referencias y costos"
+    
+        onClick={() => setVista("productos")}
+      />
+
+      <TarjetaInicio
+        titulo="Producción"
+        subtitulo="Órdenes y procesos"
+        
+        onClick={() => setVista("produccion")}
+      />
+
+      <TarjetaInicio
+        titulo="Clientes"
+        subtitulo="Registro comercial"
+       
+        onClick={() => setVista("clientes")}
+      />
+
+      <TarjetaInicio
+        titulo="Pedidos"
+        subtitulo="Solicitudes de clientes"
+       
+        onClick={() => setVista("pedidos")}
+      />
+
+      <TarjetaInicio
+        titulo="Despachos"
+        subtitulo="Pedidos listos"
+        
+        onClick={() => setVista("despachos")}
+      />
+    </div>
+  </section>
+)}
 
         {vista === "materiales" && (
           <section className="panel">
